@@ -70,7 +70,7 @@
             flex-direction: column;
             background-color: #101218;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            min-height: 180px; /* Altura mínima para evitar aplastamiento */
+            min-height: 180px;
         }
         
         .gif-item:hover {
@@ -78,27 +78,12 @@
             box-shadow: 0 0 10px rgba(0, 134, 234, 0.4);
         }
         
-        /* Añadimos un media query para ajustar la altura en pantallas pequeñas */
-        @media (max-width: 500px) {
-            .results-container {
-                grid-template-columns: 1fr; /* Una sola columna en pantallas muy pequeñas */
-            }
-            
-            .gif-item {
-                min-height: 220px; /* Altura mínima aumentada para pantallas pequeñas */
-            }
-            
-            .gif-item img {
-                height: 220px; /* Ajustamos la altura de las imágenes */
-            }
-        }
-        
         .gif-item img {
             width: 100%;
-            height: 180px; /* Altura aumentada */
-            object-fit: contain; /* Cambiado a 'contain' para mantener proporciones */
+            height: 180px;
+            object-fit: contain;
             border-radius: 4px;
-            background-color: #101218; /* Fondo oscuro para GIFs con transparencia */
+            background-color: #101218;
         }
         
         .powered-by {
@@ -124,6 +109,28 @@
             margin-bottom: 10px;
             color: #8a9bae;
             font-size: 14px;
+        }
+        
+        .trending-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 5px 0;
+            margin-bottom: 10px;
+        }
+        
+        .trending-tag {
+            background-color: #2c3138;
+            color: #edf3ff;
+            padding: 5px 10px;
+            border-radius: 16px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        
+        .trending-tag:hover {
+            background-color: #0086ea;
         }
         
         /* Estilos para la vista previa */
@@ -196,26 +203,19 @@
             margin-top: 5px;
         }
         
-        .trending-container {
-            display: flex;
-            overflow-x: auto;
-            gap: 8px;
-            padding: 5px 0;
-            margin-bottom: 10px;
-        }
-        
-        .trending-tag {
-            background-color: #2c3138;
-            color: #edf3ff;
-            padding: 5px 10px;
-            border-radius: 16px;
-            font-size: 12px;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        
-        .trending-tag:hover {
-            background-color: #0086ea;
+        /* Media queries para adaptación responsive */
+        @media (max-width: 500px) {
+            .results-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .gif-item {
+                min-height: 220px;
+            }
+            
+            .gif-item img {
+                height: 220px;
+            }
         }
     </style>
 </head>
@@ -257,8 +257,10 @@
     </div>
 
     <script>
-        // Necesitarás registrarte para obtener tu propia API key en https://developers.giphy.com/
+        // API key de Giphy
         const GIPHY_API_KEY = "YVIJUiLGH8QKQ67Jv9rNBnhMTX7ohsG";
+        
+        // Referencias a elementos del DOM
         const resultsContainer = document.getElementById('results');
         const searchInput = document.getElementById('search-input');
         const searchButton = document.getElementById('search-button');
@@ -301,13 +303,10 @@
                 const gifItem = document.createElement('div');
                 gifItem.className = 'gif-item';
                 
-                // Usamos una imagen de mejor calidad para la vista previa
-                // fixed_width proporciona un buen balance entre calidad y velocidad de carga
                 const img = document.createElement('img');
                 img.src = gif.images.fixed_width.url;
                 img.alt = gif.title || 'GIF';
                 
-                // Añadir un indicador de carga
                 img.onload = () => {
                     img.style.opacity = '1';
                 };
@@ -316,7 +315,6 @@
                 
                 gifItem.appendChild(img);
                 
-                // Evento para seleccionar el GIF
                 gifItem.addEventListener('click', () => {
                     showPreview(gif);
                 });
@@ -324,7 +322,6 @@
                 resultsContainer.appendChild(gifItem);
             });
             
-            // Comprobamos el ancho del contenedor y ajustamos dinámicamente la apariencia
             checkContainerWidth();
         }
         
@@ -332,7 +329,6 @@
         function checkContainerWidth() {
             const containerWidth = resultsContainer.clientWidth;
             
-            // Si el contenedor es estrecho, adaptamos el tamaño de los GIFs
             if (containerWidth < 400) {
                 document.querySelectorAll('.gif-item').forEach(item => {
                     item.style.minHeight = '220px';
@@ -352,19 +348,11 @@
         
         // Función para mostrar la vista previa del GIF
         function showPreview(gif) {
-            // Obtener URLs del GIF
             const gifUrl = gif.images.original.url;
             
-            // Mostrar la imagen en la vista previa
             previewImage.src = gif.images.fixed_height.url;
+            markdownBox.textContent = gifUrl;
             
-            // Crear sólo el enlace simple - Element no procesa bien Markdown para imágenes
-            const simpleLink = gifUrl;
-            
-            // Usar solo la URL simple, ya que es lo único que Element procesará correctamente
-            markdownBox.textContent = simpleLink;
-            
-            // Mostrar el modal
             previewModal.style.display = 'flex';
         }
         
@@ -377,7 +365,6 @@
                 if (data.data && data.data.length > 0) {
                     trendingTags.innerHTML = '';
                     
-                    // Mostrar las primeras 10 etiquetas
                     data.data.slice(0, 10).forEach(tag => {
                         const tagElement = document.createElement('div');
                         tagElement.className = 'trending-tag';
@@ -413,44 +400,59 @@
             }
         });
         
-        copyButton.addEventListener('click', async () => {
-            try {
-                // Usar la API moderna de clipboard
-                await navigator.clipboard.writeText(markdownBox.textContent);
-                
-                // Mostrar mensaje de éxito
-                copySuccess.style.display = 'block';
-                setTimeout(() => {
-                    copySuccess.style.display = 'none';
-                }, 2000);
-            } catch (err) {
-                console.error('Error al copiar:', err);
-                
-                // Fallback usando selección manual si la API moderna falla
-                const range = document.createRange();
-                range.selectNode(markdownBox);
-                window.getSelection().removeAllRanges();
-                window.getSelection().addRange(range);
-                
-                try {
-                    const successful = document.execCommand('copy');
-                    if (successful) {
+        // Función mejorada para copiar al portapapeles
+        copyButton.addEventListener('click', () => {
+            const textToCopy = markdownBox.textContent;
+            
+            // Método 1: API moderna de clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
                         copySuccess.style.display = 'block';
                         setTimeout(() => {
                             copySuccess.style.display = 'none';
                         }, 2000);
-                    } else {
-                        alert('Por favor selecciona el texto y cópialo manualmente');
-                    }
-                } catch (err) {
-                    alert('Por favor selecciona el texto y cópialo manualmente');
-                }
-                
-                window.getSelection().removeAllRanges();
+                    })
+                    .catch(() => {
+                        // Si falla, usamos el método de respaldo
+                        fallbackCopyTextToClipboard(textToCopy);
+                    });
+            } else {
+                // Navegadores que no soportan clipboard API
+                fallbackCopyTextToClipboard(textToCopy);
             }
-        });ualmente.');
-                });
         });
+        
+        // Método de respaldo para copiar al portapapeles
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // Hacer el textarea fuera de la pantalla
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    copySuccess.style.display = 'block';
+                    setTimeout(() => {
+                        copySuccess.style.display = 'none';
+                    }, 2000);
+                } else {
+                    alert('No se pudo copiar automáticamente. Por favor, selecciona y copia el texto manualmente.');
+                }
+            } catch (err) {
+                console.error('Error al copiar con fallback:', err);
+                alert('No se pudo copiar automáticamente. Por favor, selecciona y copia el texto manualmente.');
+            }
+            
+            document.body.removeChild(textArea);
+        }
         
         closeButton.addEventListener('click', () => {
             previewModal.style.display = 'none';
@@ -463,16 +465,12 @@
             }
         });
         
-        // Cargar etiquetas populares al iniciar
+        // Inicialización
         loadTrendingTags();
-        
-        // Buscar GIFs populares al iniciar
         searchGifs('trending');
         
-        // Añadir un detector de cambio de tamaño para ajustar dinámicamente
+        // Detector de cambio de tamaño
         window.addEventListener('resize', checkContainerWidth);
-        
-        // Iniciar con una comprobación del ancho
         setTimeout(checkContainerWidth, 500);
     </script>
 </body>

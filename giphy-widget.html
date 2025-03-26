@@ -1,4 +1,10 @@
-<!DOCTYPE html>
+<!-- Botones de opciones para diferentes formatos -->
+        <div class="format-options" style="margin-bottom: 10px; display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;">
+            <button id="format-url" class="format-button active" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">URL simple</button>
+            <button id="format-html" class="format-button" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">HTML</button>
+            <button id="format-md" class="format-button" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">Markdown</button>
+            <button id="format-command" class="format-button" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">/html command</button>
+        </div><!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -244,9 +250,18 @@
     
     <!-- Modal para la vista previa -->
     <div class="preview-modal" id="preview-modal">
-        <div class="preview-content">
+                    <div class="preview-content">
             <img id="preview-image" class="preview-image" src="" alt="Vista previa del GIF">
-            <div class="preview-info">Copia este texto y pégalo en la conversación:</div>
+            <div class="preview-info">Selecciona un formato y cópialo para pegarlo en Element:</div>
+            
+            <!-- Botones de opciones para diferentes formatos -->
+            <div class="format-options" style="margin-bottom: 10px; display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;">
+                <button id="format-url" class="format-button active" style="padding: 5px 10px; border-radius: 4px; background-color: #0086ea; border: none; color: white; cursor: pointer;">URL simple</button>
+                <button id="format-html" class="format-button" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">HTML</button>
+                <button id="format-md" class="format-button" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">Markdown</button>
+                <button id="format-command" class="format-button" style="padding: 5px 10px; border-radius: 4px; background-color: #2c3138; border: none; color: white; cursor: pointer;">/html command</button>
+            </div>
+            
             <div id="markdown-box" class="markdown-box"></div>
             <div class="preview-actions">
                 <button id="copy-button">Copiar al portapapeles</button>
@@ -346,17 +361,78 @@
             }
         }
         
+        // Variables para formatos alternativos
+        let currentGif = null;
+        let currentFormat = 'url'; // Formato predeterminado
+        
+        // Función para actualizar el contenido del cuadro de texto según el formato seleccionado
+        function updateTextFormat() {
+            if (!currentGif) return;
+            
+            const gifUrl = currentGif.images.original.url;
+            
+            switch (currentFormat) {
+                case 'url':
+                    markdownBox.textContent = gifUrl;
+                    break;
+                case 'html':
+                    markdownBox.textContent = `<img src="${gifUrl}" alt="GIF" />`;
+                    break;
+                case 'md':
+                    markdownBox.textContent = `![GIF](${gifUrl})`;
+                    break;
+                case 'command':
+                    markdownBox.textContent = `/html <img src="${gifUrl}" alt="GIF" />`;
+                    break;
+            }
+        }
+        
         // Función para mostrar la vista previa del GIF
         function showPreview(gif) {
+            currentGif = gif;
             const gifUrl = gif.images.original.url;
             
             previewImage.src = gif.images.fixed_height.url;
             
-            // Formato de Matrix para imágenes
-            const matrixImageFormat = `![GIF](${gifUrl})`;
-            markdownBox.textContent = matrixImageFormat;
+            // Actualizar el formato según la selección actual
+            updateTextFormat();
             
             previewModal.style.display = 'flex';
+        }
+        
+        // Configurar los botones de formato
+        document.getElementById('format-url').addEventListener('click', function() {
+            currentFormat = 'url';
+            updateActiveFormatButton(this);
+            updateTextFormat();
+        });
+        
+        document.getElementById('format-html').addEventListener('click', function() {
+            currentFormat = 'html';
+            updateActiveFormatButton(this);
+            updateTextFormat();
+        });
+        
+        document.getElementById('format-md').addEventListener('click', function() {
+            currentFormat = 'md';
+            updateActiveFormatButton(this);
+            updateTextFormat();
+        });
+        
+        document.getElementById('format-command').addEventListener('click', function() {
+            currentFormat = 'command';
+            updateActiveFormatButton(this);
+            updateTextFormat();
+        });
+        
+        // Función para actualizar el botón activo
+        function updateActiveFormatButton(activeButton) {
+            document.querySelectorAll('.format-button').forEach(button => {
+                button.style.backgroundColor = '#2c3138';
+                button.classList.remove('active');
+            });
+            activeButton.style.backgroundColor = '#0086ea';
+            activeButton.classList.add('active');
         }
         
         // Función para cargar etiquetas populares

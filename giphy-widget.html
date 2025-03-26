@@ -3,69 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giphy Widget</title>
+    <title>Giphy Widget para Element</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #search { width: 80%; padding: 10px; margin-bottom: 10px; }
-        .gif { width: 100px; height: auto; margin: 5px; cursor: pointer; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #15191e;
+            color: #edf3ff;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .search-container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 4px 0 0 4px;
+            border: 1px solid #4e5969;
+            background-color: #1a1d24;
+            color: #edf3ff;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #0086ea;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background-color: #0073c6;
+        }
+        
+        .results-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .gif-item {
+            position: relative;
+            cursor: pointer;
+            border-radius: 4px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .gif-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .gif-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        
+        .powered-by {
+            margin-top: 10px;
+            text-align: right;
+            font-size: 12px;
+            color: #8a9bae;
+        }
+        
+        .powered-by a {
+            color: #0086ea;
+            text-decoration: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #8a9bae;
+        }
+        
+        .instructions {
+            margin-bottom: 10px;
+            color: #8a9bae;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
-
-    <h2>Buscar GIF</h2>
-    <input type="text" id="search" placeholder="Escribe para buscar...">
-    <button onclick="buscarGIF()">Buscar</button>
-    <div id="results"></div>
+    <div class="instructions">
+        Busca un GIF y haz clic para enviarlo a la conversación
+    </div>
+    
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Busca un GIF...">
+        <button id="search-button">Buscar</button>
+    </div>
+    
+    <div id="results" class="results-container">
+        <!-- Aquí se mostrarán los resultados -->
+        <div class="loading">Busca GIFs para comenzar</div>
+    </div>
+    
+    <div class="powered-by">
+        Powered by <a href="https://giphy.com" target="_blank">GIPHY</a>
+    </div>
 
     <script>
-        const GIPHY_API_KEY = "zYVIJUiLGH8QKQ67Jv9rNBnhMTX7ohsG";  // Reemplázala con tu API Key de Giphy
-        const MATRIX_HOMESERVER = "https://matrix.org";  // Cambia si usas otro servidor
-        let matrixRoomId = "";  // Se configurará dinámicamente desde Element
-
-        function buscarGIF() {
-            let query = document.getElementById("search").value;
-            let url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${query}&limit=10`;
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    let resultsDiv = document.getElementById("results");
-                    resultsDiv.innerHTML = "";
-                    data.data.forEach(gif => {
-                        let img = document.createElement("img");
-                        img.src = gif.images.fixed_height.url;
-                        img.className = "gif";
-                        img.onclick = () => enviarGIF(gif.images.original.url);
-                        resultsDiv.appendChild(img);
-                    });
-                });
-        }
-
-        function enviarGIF(gifUrl) {
-            let event = {
-                "api": "fromWidget",
-                "requestId": "sendGif",
-                "action": "m.send.event",
-                "data": {
-                    "type": "m.room.message",
-                    "content": {
-                        "msgtype": "m.image",
-                        "body": "GIF",
-                        "url": gifUrl
-                    }
+        // Necesitarás registrarte para obtener tu propia API key en https://developers.giphy.com/
+        const GIPHY_API_KEY = "zYVIJUiLGH8QKQ67Jv9rNBnhMTX7ohsG";
+        const resultsContainer = document.getElementById('results');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        
+        // Función para buscar GIFs
+        async function searchGifs(query) {
+            resultsContainer.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            try {
+                const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&offset=0&rating=g&lang=es`);
+                const data = await response.json();
+                
+                if (data.data.length === 0) {
+                    resultsContainer.innerHTML = '<div class="loading">No se encontraron resultados</div>';
+                    return;
                 }
-            };
-            parent.postMessage(event, "*");
+                
+                displayResults(data.data);
+            } catch (error) {
+                console.error('Error al buscar GIFs:', error);
+                resultsContainer.innerHTML = '<div class="loading">Error al buscar. Inténtalo de nuevo.</div>';
+            }
         }
-
-        window.addEventListener("message", (event) => {
-            if (event.data?.api === "toWidget" && event.data?.action === "capabilities") {
-                matrixRoomId = event.data.data?.room_id;
+        
+        // Función para mostrar los resultados
+        function displayResults(gifs) {
+            resultsContainer.innerHTML = '';
+            
+            gifs.forEach(gif => {
+                const gifItem = document.createElement('div');
+                gifItem.className = 'gif-item';
+                
+                const img = document.createElement('img');
+                img.src = gif.images.fixed_height_small.url;
+                img.alt = gif.title;
+                
+                gifItem.appendChild(img);
+                
+                // Evento para seleccionar el GIF
+                gifItem.addEventListener('click', () => {
+                    sendGifToRoom(gif);
+                });
+                
+                resultsContainer.appendChild(gifItem);
+            });
+        }
+        
+        // Función para enviar el GIF seleccionado a la conversación
+        function sendGifToRoom(gif) {
+            // Obtener la URL original del GIF
+            const gifUrl = gif.images.original.url;
+            
+            // Comunicarse con Element/Matrix usando la API de widget
+            if (window.opener && window.opener.postMessage) {
+                // Formato de mensaje para enviar a la sala
+                const message = {
+                    action: "m.sticker",
+                    data: {
+                        url: gifUrl,
+                        info: {
+                            w: gif.images.original.width,
+                            h: gif.images.original.height,
+                            mimetype: "image/gif",
+                            size: gif.images.original.size
+                        },
+                        name: gif.title
+                    },
+                    requestId: Date.now().toString()
+                };
+                
+                // Enviar el mensaje al cliente Matrix/Element
+                window.opener.postMessage(message, '*');
+            } else {
+                alert("No se pudo conectar con Matrix. Copia esta URL para compartir el GIF: " + gifUrl);
+                // Copiar al portapapeles como fallback
+                navigator.clipboard.writeText(gifUrl).catch(err => {
+                    console.error('No se pudo copiar al portapapeles: ', err);
+                });
+            }
+        }
+        
+        // Configurar eventos de búsqueda
+        searchButton.addEventListener('click', () => {
+            const query = searchInput.value.trim();
+            if (query) {
+                searchGifs(query);
             }
         });
-
-        parent.postMessage({ api: "fromWidget", action: "ready" }, "*");
+        
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                if (query) {
+                    searchGifs(query);
+                }
+            }
+        });
+        
+        // Configurar la comunicación con Element/Matrix
+        window.addEventListener('message', (event) => {
+            // Responder a los mensajes de Element/Matrix si es necesario
+            console.log('Mensaje recibido:', event.data);
+        });
     </script>
-
 </body>
 </html>

@@ -221,7 +221,7 @@
 </head>
 <body>
     <div class="instructions">
-        Busca un GIF y haz clic para generar un enlace que puedas copiar a la conversación
+        Busca un GIF, haz clic para generar el formato correcto y pégalo en Element
     </div>
     
     <div class="search-container">
@@ -246,7 +246,7 @@
     <div class="preview-modal" id="preview-modal">
         <div class="preview-content">
             <img id="preview-image" class="preview-image" src="" alt="Vista previa del GIF">
-            <div class="preview-info">Copia este enlace directo y pégalo en la conversación:</div>
+            <div class="preview-info">Copia este texto y pégalo en la conversación:</div>
             <div id="markdown-box" class="markdown-box"></div>
             <div class="preview-actions">
                 <button id="copy-button">Copiar al portapapeles</button>
@@ -351,7 +351,10 @@
             const gifUrl = gif.images.original.url;
             
             previewImage.src = gif.images.fixed_height.url;
-            markdownBox.textContent = gifUrl;
+            
+            // Formato de Matrix para imágenes
+            const matrixImageFormat = `![GIF](${gifUrl})`;
+            markdownBox.textContent = matrixImageFormat;
             
             previewModal.style.display = 'flex';
         }

@@ -53,10 +53,11 @@
         
         .results-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
             overflow-y: auto;
             flex: 1;
+            padding: 5px;
         }
         
         .gif-item {
@@ -65,6 +66,11 @@
             border-radius: 4px;
             overflow: hidden;
             transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            background-color: #101218;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            min-height: 180px; /* Altura mínima para evitar aplastamiento */
         }
         
         .gif-item:hover {
@@ -72,11 +78,27 @@
             box-shadow: 0 0 10px rgba(0, 134, 234, 0.4);
         }
         
+        /* Añadimos un media query para ajustar la altura en pantallas pequeñas */
+        @media (max-width: 500px) {
+            .results-container {
+                grid-template-columns: 1fr; /* Una sola columna en pantallas muy pequeñas */
+            }
+            
+            .gif-item {
+                min-height: 220px; /* Altura mínima aumentada para pantallas pequeñas */
+            }
+            
+            .gif-item img {
+                height: 220px; /* Ajustamos la altura de las imágenes */
+            }
+        }
+        
         .gif-item img {
             width: 100%;
-            height: 120px;
-            object-fit: cover;
+            height: 180px; /* Altura aumentada */
+            object-fit: contain; /* Cambiado a 'contain' para mantener proporciones */
             border-radius: 4px;
+            background-color: #101218; /* Fondo oscuro para GIFs con transparencia */
         }
         
         .powered-by {
@@ -224,7 +246,7 @@
     <div class="preview-modal" id="preview-modal">
         <div class="preview-content">
             <img id="preview-image" class="preview-image" src="" alt="Vista previa del GIF">
-            <div class="preview-info">Copia este texto y pégalo en la conversación:</div>
+            <div class="preview-info">Copia este enlace directo y pégalo en la conversación:</div>
             <div id="markdown-box" class="markdown-box"></div>
             <div class="preview-actions">
                 <button id="copy-button">Copiar al portapapeles</button>
@@ -236,7 +258,7 @@
 
     <script>
         // Necesitarás registrarte para obtener tu propia API key en https://developers.giphy.com/
-        const GIPHY_API_KEY = "zYVIJUiLGH8QKQ67Jv9rNBnhMTX7ohsG";
+        const GIPHY_API_KEY = "YVIJUiLGH8QKQ67Jv9rNBnhMTX7ohsG";
         const resultsContainer = document.getElementById('results');
         const searchInput = document.getElementById('search-input');
         const searchButton = document.getElementById('search-button');
@@ -279,9 +301,18 @@
                 const gifItem = document.createElement('div');
                 gifItem.className = 'gif-item';
                 
+                // Usamos una imagen de mejor calidad para la vista previa
+                // fixed_width proporciona un buen balance entre calidad y velocidad de carga
                 const img = document.createElement('img');
-                img.src = gif.images.fixed_height_small.url;
-                img.alt = gif.title;
+                img.src = gif.images.fixed_width.url;
+                img.alt = gif.title || 'GIF';
+                
+                // Añadir un indicador de carga
+                img.onload = () => {
+                    img.style.opacity = '1';
+                };
+                img.style.opacity = '0';
+                img.style.transition = 'opacity 0.3s';
                 
                 gifItem.appendChild(img);
                 
@@ -292,23 +323,46 @@
                 
                 resultsContainer.appendChild(gifItem);
             });
+            
+            // Comprobamos el ancho del contenedor y ajustamos dinámicamente la apariencia
+            checkContainerWidth();
+        }
+        
+        // Función para comprobar el ancho del contenedor y ajustar la presentación
+        function checkContainerWidth() {
+            const containerWidth = resultsContainer.clientWidth;
+            
+            // Si el contenedor es estrecho, adaptamos el tamaño de los GIFs
+            if (containerWidth < 400) {
+                document.querySelectorAll('.gif-item').forEach(item => {
+                    item.style.minHeight = '220px';
+                });
+                document.querySelectorAll('.gif-item img').forEach(img => {
+                    img.style.height = '220px';
+                });
+            } else {
+                document.querySelectorAll('.gif-item').forEach(item => {
+                    item.style.minHeight = '180px';
+                });
+                document.querySelectorAll('.gif-item img').forEach(img => {
+                    img.style.height = '180px';
+                });
+            }
         }
         
         // Función para mostrar la vista previa del GIF
         function showPreview(gif) {
             // Obtener URLs del GIF
             const gifUrl = gif.images.original.url;
-            const gifMp4Url = gif.images.original.mp4;
             
             // Mostrar la imagen en la vista previa
             previewImage.src = gif.images.fixed_height.url;
             
-            // Crear el texto en formato markdown con varias opciones
-            const markdownText = `![${gif.title || 'GIF'}](${gifUrl})`;
-            const htmlLink = `<img src="${gifUrl}" alt="${gif.title || 'GIF'}" />`;
+            // Crear sólo el enlace simple - Element no procesa bien Markdown para imágenes
             const simpleLink = gifUrl;
             
-            markdownBox.textContent = markdownText;
+            // Usar solo la URL simple, ya que es lo único que Element procesará correctamente
+            markdownBox.textContent = simpleLink;
             
             // Mostrar el modal
             previewModal.style.display = 'flex';
@@ -359,18 +413,42 @@
             }
         });
         
-        copyButton.addEventListener('click', () => {
-            // Copiar al portapapeles
-            navigator.clipboard.writeText(markdownBox.textContent)
-                .then(() => {
-                    copySuccess.style.display = 'block';
-                    setTimeout(() => {
-                        copySuccess.style.display = 'none';
-                    }, 2000);
-                })
-                .catch(err => {
-                    console.error('Error al copiar al portapapeles:', err);
-                    alert('No se pudo copiar automáticamente. Selecciona y copia el texto manualmente.');
+        copyButton.addEventListener('click', async () => {
+            try {
+                // Usar la API moderna de clipboard
+                await navigator.clipboard.writeText(markdownBox.textContent);
+                
+                // Mostrar mensaje de éxito
+                copySuccess.style.display = 'block';
+                setTimeout(() => {
+                    copySuccess.style.display = 'none';
+                }, 2000);
+            } catch (err) {
+                console.error('Error al copiar:', err);
+                
+                // Fallback usando selección manual si la API moderna falla
+                const range = document.createRange();
+                range.selectNode(markdownBox);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        copySuccess.style.display = 'block';
+                        setTimeout(() => {
+                            copySuccess.style.display = 'none';
+                        }, 2000);
+                    } else {
+                        alert('Por favor selecciona el texto y cópialo manualmente');
+                    }
+                } catch (err) {
+                    alert('Por favor selecciona el texto y cópialo manualmente');
+                }
+                
+                window.getSelection().removeAllRanges();
+            }
+        });ualmente.');
                 });
         });
         
@@ -390,6 +468,12 @@
         
         // Buscar GIFs populares al iniciar
         searchGifs('trending');
+        
+        // Añadir un detector de cambio de tamaño para ajustar dinámicamente
+        window.addEventListener('resize', checkContainerWidth);
+        
+        // Iniciar con una comprobación del ancho
+        setTimeout(checkContainerWidth, 500);
     </script>
 </body>
 </html>

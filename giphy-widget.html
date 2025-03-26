@@ -1,4 +1,8 @@
-<!DOCTYPE html>
+formatRiotBtn.addEventListener('click', function() {
+            currentFormat = 'riot';
+            updateActiveFormatButton(this);
+            updateTextFormat();
+        });<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -274,7 +278,8 @@
                 <button id="format-url" class="format-button active">URL simple</button>
                 <button id="format-html" class="format-button">HTML</button>
                 <button id="format-md" class="format-button">Markdown</button>
-                <button id="format-command" class="format-button">/html command</button>
+                <button id="format-command" class="format-button">/html</button>
+                <button id="format-riot" class="format-button">/me</button>
             </div>
             
             <div id="markdown-box" class="markdown-box"></div>
@@ -307,6 +312,7 @@
         const formatHtmlBtn = document.getElementById('format-html');
         const formatMdBtn = document.getElementById('format-md');
         const formatCommandBtn = document.getElementById('format-command');
+        const formatRiotBtn = document.getElementById('format-riot');
         
         // Variables para formatos alternativos
         let currentGif = null;
@@ -403,7 +409,12 @@
                     markdownBox.textContent = `![GIF](${gifUrl})`;
                     break;
                 case 'command':
-                    markdownBox.textContent = `/html <img src="${gifUrl}" alt="GIF" />`;
+                    // Usar el comando /html con comillas escapadas correctamente
+                    markdownBox.textContent = `/html <img src="${gifUrl}" alt="GIF">`;
+                    break;
+                case 'riot':
+                    // Usar el comando /me para enviar un mensaje de acción con la URL
+                    markdownBox.textContent = `/me envía un GIF: ${gifUrl}`;
                     break;
             }
         }
@@ -426,6 +437,7 @@
             formatHtmlBtn.classList.remove('active');
             formatMdBtn.classList.remove('active');
             formatCommandBtn.classList.remove('active');
+            formatRiotBtn.classList.remove('active');
             
             activeButton.classList.add('active');
         }
@@ -560,6 +572,12 @@
         
         formatCommandBtn.addEventListener('click', function() {
             currentFormat = 'command';
+            updateActiveFormatButton(this);
+            updateTextFormat();
+        });
+        
+        formatRiotBtn.addEventListener('click', function() {
+            currentFormat = 'riot';
             updateActiveFormatButton(this);
             updateTextFormat();
         });

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giphy Widget para Element</title>
+    <meta name="matrix-widget">
+    <meta name="matrix-widget-capabilities" content="m.image,m.sticker,m.capability.response">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -172,30 +174,79 @@
         function sendGifToRoom(gif) {
             // Obtener la URL original del GIF
             const gifUrl = gif.images.original.url;
+            const gifWidth = parseInt(gif.images.original.width);
+            const gifHeight = parseInt(gif.images.original.height);
             
-            // Comunicarse con Element/Matrix usando la API de widget
-            if (window.opener && window.opener.postMessage) {
-                // Formato de mensaje para enviar a la sala
-                const message = {
-                    action: "m.sticker",
-                    data: {
-                        url: gifUrl,
-                        info: {
-                            w: gif.images.original.width,
-                            h: gif.images.original.height,
-                            mimetype: "image/gif",
-                            size: gif.images.original.size
+            try {
+                // Método 1: Usar API de widgets para Matrix
+                if (window.widgetApi) {
+                    // Si la API de widgets está disponible
+                    window.widgetApi.sendContentToRoom(
+                        {
+                            url: gifUrl,
+                            msgtype: "m.image",
+                            body: gif.title || "GIF",
+                            info: {
+                                w: gifWidth,
+                                h: gifHeight,
+                                mimetype: "image/gif"
+                            }
+                        }
+                    );
+                }
+                // Método 2: Usar postMessage con la API de client-to-widget
+                else if (window.parent) {
+                    const widgetId = new URLSearchParams(window.location.search).get('widgetId');
+                    const message = {
+                        api: "fromWidget",
+                        action: "content_loaded",
+                        widgetId: widgetId,
+                        data: {
+                            type: "m.image",
+                            url: gifUrl,
+                            text: gif.title || "GIF",
+                            width: gifWidth,
+                            height: gifHeight
                         },
-                        name: gif.title
-                    },
-                    requestId: Date.now().toString()
-                };
-                
-                // Enviar el mensaje al cliente Matrix/Element
-                window.opener.postMessage(message, '*');
-            } else {
-                alert("No se pudo conectar con Matrix. Copia esta URL para compartir el GIF: " + gifUrl);
-                // Copiar al portapapeles como fallback
+                        requestId: Date.now().toString()
+                    };
+                    
+                    window.parent.postMessage(message, '*');
+                    
+                    // Probar también con el formato m.sticker
+                    const stickerMessage = {
+                        api: "fromWidget",
+                        action: "send_event",
+                        widgetId: widgetId,
+                        data: {
+                            type: "m.sticker",
+                            content: {
+                                url: gifUrl,
+                                info: {
+                                    w: gifWidth,
+                                    h: gifHeight,
+                                    mimetype: "image/gif"
+                                },
+                                body: gif.title || "GIF"
+                            }
+                        },
+                        requestId: (Date.now() + 1).toString()
+                    };
+                    
+                    window.parent.postMessage(stickerMessage, '*');
+                }
+                // Método 3: Fallback simple - mostrar la URL para copiar
+                else {
+                    const confirmCopy = confirm("No se pudo enviar el GIF directamente. ¿Quieres copiar la URL para pegarla manualmente?");
+                    if (confirmCopy) {
+                        navigator.clipboard.writeText(gifUrl);
+                        alert("URL copiada al portapapeles.");
+                    }
+                }
+            } catch (error) {
+                console.error("Error al enviar GIF:", error);
+                alert("Hubo un error al enviar el GIF. Intenta copiar esta URL: " + gifUrl);
+                // Intentar copiar al portapapeles como último recurso
                 navigator.clipboard.writeText(gifUrl).catch(err => {
                     console.error('No se pudo copiar al portapapeles: ', err);
                 });
@@ -221,9 +272,55 @@
         
         // Configurar la comunicación con Element/Matrix
         window.addEventListener('message', (event) => {
-            // Responder a los mensajes de Element/Matrix si es necesario
+            // Responder a los mensajes de Element/Matrix
             console.log('Mensaje recibido:', event.data);
+            
+            // Intentar registrarse con la API de widgets si está disponible
+            if (event.data.action === 'capabilities') {
+                const capabilities = {
+                    capabilities: ['m.image', 'm.sticker', 'm.capability.screenshot', 'm.capability.response'],
+                };
+                
+                event.source.postMessage({
+                    action: 'capabilities',
+                    response: capabilities,
+                    requestId: event.data.requestId
+                }, '*');
+            }
+            
+            // Detectar si el widget está listo para ser utilizado
+            if (event.data.api === "toWidget" && event.data.widgetId) {
+                // Guardar el widgetId para futuras comunicaciones
+                window.widgetId = event.data.widgetId;
+                
+                // Responder que estamos listos
+                event.source.postMessage({
+                    api: "fromWidget",
+                    action: "content_loaded",
+                    widgetId: event.data.widgetId,
+                    requestId: Date.now().toString()
+                }, '*');
+            }
         });
+        
+        // Intentar inicializar la API de widgets de Matrix si está disponible
+        // Esta función se ejecuta al cargar la página
+        (function initializeWidgetApi() {
+            try {
+                // Comprobar si estamos en un iframe (lo normal para widgets en Element)
+                if (window.parent !== window) {
+                    // Enviar un mensaje para indicar que el widget está listo
+                    window.parent.postMessage({
+                        api: "fromWidget",
+                        action: "content_loaded",
+                        widgetId: new URLSearchParams(window.location.search).get('widgetId') || "unknown",
+                        requestId: "init" + Date.now()
+                    }, '*');
+                }
+            } catch (e) {
+                console.error("Error al inicializar el widget:", e);
+            }
+        })();
     </script>
 </body>
 </html>
